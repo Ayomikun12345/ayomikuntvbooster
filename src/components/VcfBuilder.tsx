@@ -242,7 +242,8 @@ export function VcfBuilder() {
     endsAtRef.current = endsAt;
     setRemaining(total);
     setPhase("running");
-    persist({ phase: "running", endsAt, hours, minutes, secs });
+    setStarterId(sessionId);
+    persist({ phase: "running", endsAt, hours, minutes, secs, starterId: sessionId });
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
@@ -252,7 +253,8 @@ export function VcfBuilder() {
     endsAtRef.current = null;
     setPhase("idle");
     setRemaining(0);
-    persist({ phase: "idle", endsAt: null });
+    setStarterId(null);
+    persist({ phase: "idle", endsAt: null, starterId: null });
   };
 
   const clearTimer = () => {
@@ -263,6 +265,7 @@ export function VcfBuilder() {
     setHours(0);
     setMinutes(0);
     setSecs(0);
+    setStarterId(null);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
     toast.success("Timer cleared. Download is locked again.");
   };
