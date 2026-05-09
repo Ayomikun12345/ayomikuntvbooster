@@ -334,9 +334,10 @@ export function VcfBuilder() {
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
               className="h-12 gap-2"
-              disabled={contacts.length >= MAX_CONTACTS}
+              disabled={contacts.length >= MAX_CONTACTS || phase !== "done"}
+              title={phase !== "done" ? "Unlocks when the countdown finishes" : undefined}
             >
-              <Upload className="size-4" /> Import CSV
+              {phase !== "done" ? <Lock className="size-4" /> : <Upload className="size-4" />} Import CSV
             </Button>
             <Button
               onClick={add}
