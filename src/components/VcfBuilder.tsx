@@ -110,17 +110,29 @@ export function VcfBuilder() {
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
-  type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null };
+  const SESSION_KEY = "ayomikun-vcf-session";
+  type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
   const loadSaved = (): Saved => {
-    if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+    if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      if (!raw) return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
       const s = JSON.parse(raw) as Saved;
-      return { hours: s.hours ?? 0, minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null };
+      return { hours: s.hours ?? 0, minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null, starterId: s.starterId ?? null };
     } catch {
-      return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     }
+  };
+  const getSessionId = (): string => {
+    if (typeof window === "undefined") return "";
+    try {
+      let id = sessionStorage.getItem(SESSION_KEY);
+      if (!id) {
+        id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem(SESSION_KEY, id);
+      }
+      return id;
+    } catch { return ""; }
   };
   const initial = loadSaved();
   const initialRemaining =
@@ -135,6 +147,9 @@ export function VcfBuilder() {
   const [secs, setSecs] = useState(initial.secs);
   const [remaining, setRemaining] = useState(initialRemaining);
   const [phase, setPhase] = useState<"idle" | "running" | "done">(initialPhase);
+  const [sessionId] = useState<string>(() => getSessionId());
+  const [starterId, setStarterId] = useState<string | null>(initial.starterId);
+  const isStarter = !!starterId && starterId === sessionId;
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -191,6 +206,10 @@ export function VcfBuilder() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
+    if (phase !== "done") {
+      toast.error("CSV import unlocks when the countdown finishes.");
+      return;
+    }
     try {
       const text = await file.text();
       const parsed = parseCsv(text);
@@ -227,7 +246,8 @@ export function VcfBuilder() {
     endsAtRef.current = endsAt;
     setRemaining(total);
     setPhase("running");
-    persist({ phase: "running", endsAt, hours, minutes, secs });
+    setStarterId(sessionId);
+    persist({ phase: "running", endsAt, hours, minutes, secs, starterId: sessionId });
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
@@ -237,7 +257,8 @@ export function VcfBuilder() {
     endsAtRef.current = null;
     setPhase("idle");
     setRemaining(0);
-    persist({ phase: "idle", endsAt: null });
+    setStarterId(null);
+    persist({ phase: "idle", endsAt: null, starterId: null });
   };
 
   const clearTimer = () => {
@@ -248,6 +269,7 @@ export function VcfBuilder() {
     setHours(0);
     setMinutes(0);
     setSecs(0);
+    setStarterId(null);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
     toast.success("Timer cleared. Download is locked again.");
   };
@@ -256,6 +278,10 @@ export function VcfBuilder() {
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
+    if (phase !== "done") {
+      toast.error("Download unlocks when the countdown finishes.");
+      return;
+    }
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
     if (!valid.length) {
       toast.error("Add at least one contact with a name and phone number.");
@@ -308,9 +334,10 @@ export function VcfBuilder() {
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
               className="h-12 gap-2"
-              disabled={contacts.length >= MAX_CONTACTS}
+              disabled={contacts.length >= MAX_CONTACTS || phase !== "done"}
+              title={phase !== "done" ? "Unlocks when the countdown finishes" : undefined}
             >
-              <Upload className="size-4" /> Import CSV
+              {phase !== "done" ? <Lock className="size-4" /> : <Upload className="size-4" />} Import CSV
             </Button>
             <Button
               onClick={add}
@@ -470,11 +497,13 @@ export function VcfBuilder() {
           </div>
         )}
 
-        <div className="mt-4 pt-4 border-t border-border/50 flex justify-end">
-          <Button onClick={clearTimer} variant="outline" size="sm" className="gap-2">
-            <Trash2 className="size-4" /> Clear timer & relock
-          </Button>
-        </div>
+        {isStarter && phase !== "idle" && (
+          <div className="mt-4 pt-4 border-t border-border/50 flex justify-end">
+            <Button onClick={clearTimer} variant="outline" size="sm" className="gap-2">
+              <Trash2 className="size-4" /> Clear timer & relock
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
