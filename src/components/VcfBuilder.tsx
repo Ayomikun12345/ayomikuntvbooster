@@ -137,6 +137,18 @@ export function VcfBuilder() {
     persist({ phase: "idle", endsAt: null });
   };
 
+  const clearTimer = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    endsAtRef.current = null;
+    setPhase("idle");
+    setRemaining(0);
+    setHours(0);
+    setMinutes(0);
+    setSecs(0);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    toast.success("Timer cleared. Download is locked again.");
+  };
+
   const fmt = (s: number) =>
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
