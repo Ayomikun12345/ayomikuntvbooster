@@ -103,6 +103,7 @@ export function VcfBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => { persist({ hours }); }, [hours]);
   useEffect(() => { persist({ minutes }); }, [minutes]);
   useEffect(() => { persist({ secs }); }, [secs]);
 
