@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Ayomikun Tv" },
+      { name: "description", content: "Ayomikun VCF Creator is a modern web application for generating VCF contact files." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Ayomikun Tv" },
+      { property: "og:description", content: "Ayomikun VCF Creator is a modern web application for generating VCF contact files." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Ayomikun Tv" },
+      { name: "twitter:description", content: "Ayomikun VCF Creator is a modern web application for generating VCF contact files." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/620acfe1-6c85-4279-ba6e-7f9761120a5f/id-preview-29dd354d--def81cc7-896e-45bc-902d-966daca4cc63.lovable.app-1778330797250.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/620acfe1-6c85-4279-ba6e-7f9761120a5f/id-preview-29dd354d--def81cc7-896e-45bc-902d-966daca4cc63.lovable.app-1778330797250.png" },
     ],
     links: [
       {
