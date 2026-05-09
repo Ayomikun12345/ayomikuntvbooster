@@ -189,6 +189,35 @@ export function VcfBuilder() {
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const importCsv = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (!parsed.length) {
+        toast.error("No valid contacts found in that CSV.");
+        return;
+      }
+      setContacts((prev) => {
+        const base = prev.length === 1 && !prev[0].firstName && !prev[0].lastName && !prev[0].phone ? [] : prev;
+        const room = MAX_CONTACTS - base.length;
+        if (room <= 0) {
+          toast.error(`Contact limit reached (${MAX_CONTACTS} max).`);
+          return prev;
+        }
+        const toAdd = parsed.slice(0, room);
+        if (parsed.length > room) {
+          toast.warning(`Imported ${toAdd.length} contacts. ${parsed.length - room} skipped (over ${MAX_CONTACTS} limit).`);
+        } else {
+          toast.success(`Imported ${toAdd.length} contact${toAdd.length > 1 ? "s" : ""} from CSV.`);
+        }
+        return [...base, ...toAdd];
+      });
+    } catch {
+      toast.error("Could not read that CSV file.");
+    }
+  };
+
   const startTimer = () => {
     const total = Math.max(0, Math.floor(hours) * 3600 + Math.floor(minutes) * 60 + Math.floor(secs));
     if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
