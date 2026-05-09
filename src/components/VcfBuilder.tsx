@@ -21,6 +21,8 @@ function escapeVcf(v: string) {
   return v.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
+const MAX_CONTACTS = 100;
+
 function buildVcf(contacts: Contact[]) {
   return contacts
     .filter((c) => c.firstName || c.lastName || c.phone)
@@ -111,7 +113,18 @@ export function VcfBuilder() {
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
   };
 
-  const add = () => setContacts((p) => [...p, { ...empty }]);
+  const add = () => {
+    setContacts((p) => {
+      if (p.length >= MAX_CONTACTS) {
+        toast.error(`Contact limit reached (${MAX_CONTACTS} max). Remove one to add another.`);
+        return p;
+      }
+      if (p.length + 1 === MAX_CONTACTS) {
+        toast.warning(`Heads up: you've hit the ${MAX_CONTACTS}-contact limit.`);
+      }
+      return [...p, { ...empty }];
+    });
+  };
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
@@ -158,6 +171,10 @@ export function VcfBuilder() {
       toast.error("Add at least one contact with a name and phone number.");
       return;
     }
+    if (valid.length > MAX_CONTACTS) {
+      toast.error(`Too many contacts. The limit is ${MAX_CONTACTS} per VCF.`);
+      return;
+    }
     const vcf = buildVcf(contacts);
     const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -184,9 +201,27 @@ export function VcfBuilder() {
             placeholder="ayomikun-tv-contacts"
           />
         </div>
-        <Button onClick={add} variant="secondary" className="h-12 gap-2">
-          <UserPlus className="size-4" /> Add contact
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={add}
+            variant="secondary"
+            className="h-12 gap-2"
+            disabled={contacts.length >= MAX_CONTACTS}
+          >
+            <UserPlus className="size-4" /> Add contact
+          </Button>
+          <span
+            className={`text-xs ${
+              contacts.length >= MAX_CONTACTS
+                ? "text-destructive"
+                : contacts.length >= MAX_CONTACTS * 0.9
+                ? "text-accent"
+                : "text-muted-foreground"
+            }`}
+          >
+            {contacts.length} / {MAX_CONTACTS} contacts
+          </span>
+        </div>
       </div>
 
       <div className="space-y-6">
