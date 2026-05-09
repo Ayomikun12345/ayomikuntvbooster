@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
@@ -45,6 +45,13 @@ function buildVcf(contacts: Contact[]) {
 export function VcfBuilder() {
   const [contacts, setContacts] = useState<Contact[]>([{ ...empty }]);
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
+  const [minutes, setMinutes] = useState(1);
+  const [secs, setSecs] = useState(0);
+  const [remaining, setRemaining] = useState(0);
+  const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
   const update = (i: number, key: keyof Contact, value: string) => {
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
@@ -53,6 +60,36 @@ export function VcfBuilder() {
   const add = () => setContacts((p) => [...p, { ...empty }]);
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
+
+  const startTimer = () => {
+    const total = Math.max(0, Math.floor(minutes) * 60 + Math.floor(secs));
+    if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
+    const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
+    if (!valid.length) return toast.error("Add at least one contact with a name and phone first.");
+    setRemaining(total);
+    setPhase("running");
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          setPhase("done");
+          toast.success("Time's up! Your VCF is ready to download.");
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+  };
+
+  const resetTimer = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setPhase("idle");
+    setRemaining(0);
+  };
+
+  const fmt = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
@@ -141,14 +178,79 @@ export function VcfBuilder() {
         ))}
       </div>
 
-      <div className="mt-8 flex flex-col sm:flex-row gap-3">
-        <Button onClick={download} size="lg" className="h-14 px-8 text-base font-semibold gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground glow hover:opacity-95">
-          <Download className="size-5" /> Download .VCF file
-        </Button>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Sparkles className="size-4 text-accent" />
-          Works on iPhone, Android & desktop contacts.
+      <div className="mt-8 rounded-2xl border border-border/60 bg-background/30 p-5 md:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Timer className="size-4 text-accent" />
+          <span className="text-sm uppercase tracking-widest text-muted-foreground">
+            Countdown to unlock
+          </span>
         </div>
+
+        {phase === "idle" && (
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="flex-1">
+              <Label>Minutes</Label>
+              <Input
+                type="number"
+                min={0}
+                value={minutes}
+                onChange={(e) => setMinutes(Math.max(0, Number(e.target.value) || 0))}
+                className="mt-2 bg-background/40"
+              />
+            </div>
+            <div className="flex-1">
+              <Label>Seconds</Label>
+              <Input
+                type="number"
+                min={0}
+                max={59}
+                value={secs}
+                onChange={(e) => setSecs(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
+                className="mt-2 bg-background/40"
+              />
+            </div>
+            <Button
+              onClick={startTimer}
+              size="lg"
+              className="h-12 gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground glow"
+            >
+              <Play className="size-4" /> Start countdown
+            </Button>
+          </div>
+        )}
+
+        {phase === "running" && (
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="text-6xl md:text-7xl font-bold tabular-nums text-gradient tracking-tight">
+              {fmt(remaining)}
+            </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Lock className="size-4" /> Download unlocks when timer hits 00:00
+            </p>
+            <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+              <RotateCcw className="size-4" /> Cancel
+            </Button>
+          </div>
+        )}
+
+        {phase === "done" && (
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <Button
+              onClick={download}
+              size="lg"
+              className="h-14 px-8 text-base font-semibold gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground glow hover:opacity-95 floaty"
+            >
+              <Download className="size-5" /> Download .VCF file
+            </Button>
+            <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+              <RotateCcw className="size-4" /> Restart timer
+            </Button>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="size-4 text-accent" />
+              Works on iPhone, Android & desktop contacts.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
