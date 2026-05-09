@@ -111,7 +111,11 @@ export function VcfBuilder() {
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
   const SESSION_KEY = "ayomikun-vcf-session";
+  const NAME_KEY = "ayomikun-vcf-name";
+  const ACTIVITY_KEY = "ayomikun-vcf-activity";
+  const ACTIVITY_MAX = 50;
   type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
+  type Activity = { id: string; sessionId: string; name: string; label: string; at: number };
   const loadSaved = (): Saved => {
     if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     try {
