@@ -201,9 +201,27 @@ export function VcfBuilder() {
             placeholder="ayomikun-tv-contacts"
           />
         </div>
-        <Button onClick={add} variant="secondary" className="h-12 gap-2">
-          <UserPlus className="size-4" /> Add contact
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={add}
+            variant="secondary"
+            className="h-12 gap-2"
+            disabled={contacts.length >= MAX_CONTACTS}
+          >
+            <UserPlus className="size-4" /> Add contact
+          </Button>
+          <span
+            className={`text-xs ${
+              contacts.length >= MAX_CONTACTS
+                ? "text-destructive"
+                : contacts.length >= MAX_CONTACTS * 0.9
+                ? "text-accent"
+                : "text-muted-foreground"
+            }`}
+          >
+            {contacts.length} / {MAX_CONTACTS} contacts
+          </span>
+        </div>
       </div>
 
       <div className="space-y-6">
