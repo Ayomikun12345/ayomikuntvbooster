@@ -113,7 +113,18 @@ export function VcfBuilder() {
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
   };
 
-  const add = () => setContacts((p) => [...p, { ...empty }]);
+  const add = () => {
+    setContacts((p) => {
+      if (p.length >= MAX_CONTACTS) {
+        toast.error(`Contact limit reached (${MAX_CONTACTS} max). Remove one to add another.`);
+        return p;
+      }
+      if (p.length + 1 === MAX_CONTACTS) {
+        toast.warning(`Heads up: you've hit the ${MAX_CONTACTS}-contact limit.`);
+      }
+      return [...p, { ...empty }];
+    });
+  };
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
