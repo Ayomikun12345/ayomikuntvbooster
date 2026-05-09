@@ -285,7 +285,7 @@ export function VcfBuilder() {
               {fmt(remaining)}
             </div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Lock className="size-4" /> Download unlocks when timer hits 00:00
+              <Lock className="size-4" /> Download unlocks when timer hits 00:00:00
             </p>
             <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
               <RotateCcw className="size-4" /> Cancel
