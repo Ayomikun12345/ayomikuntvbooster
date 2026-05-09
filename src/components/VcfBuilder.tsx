@@ -21,7 +21,7 @@ function escapeVcf(v: string) {
   return v.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
-const MAX_CONTACTS = 100;
+const MAX_CONTACTS = 2000;
 
 // Parse a single CSV line respecting quoted fields
 function parseCsvLine(line: string): string[] {
