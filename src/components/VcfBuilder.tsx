@@ -254,7 +254,18 @@ export function VcfBuilder() {
       toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
       return;
     }
-    setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
+    setContacts((prev) => {
+      const next = prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
+      if (phase === "running" && !loggedIndicesRef.current.has(i)) {
+        const c = next[i];
+        if ((c.firstName || c.lastName) && c.phone) {
+          loggedIndicesRef.current.add(i);
+          const fn = `${c.firstName} ${c.lastName}`.trim() || "a contact";
+          logActivity(`added ${fn}`);
+        }
+      }
+      return next;
+    });
   };
 
   const add = () => {
