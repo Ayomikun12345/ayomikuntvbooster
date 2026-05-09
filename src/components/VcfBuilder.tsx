@@ -21,6 +21,8 @@ function escapeVcf(v: string) {
   return v.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
+const MAX_CONTACTS = 100;
+
 function buildVcf(contacts: Contact[]) {
   return contacts
     .filter((c) => c.firstName || c.lastName || c.phone)
