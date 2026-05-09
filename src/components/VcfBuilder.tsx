@@ -185,7 +185,21 @@ export function VcfBuilder() {
   useEffect(() => { persist({ minutes }); }, [minutes]);
   useEffect(() => { persist({ secs }); }, [secs]);
 
+  const normPhone = (v: string) => v.replace(/[^\d+]/g, "");
+  const normEmail = (v: string) => v.trim().toLowerCase();
+  const isDuplicate = (key: "phone" | "email", value: string, ignoreIdx = -1) => {
+    if (!value.trim()) return false;
+    const norm = key === "phone" ? normPhone : normEmail;
+    const target = norm(value);
+    if (!target) return false;
+    return contacts.some((c, idx) => idx !== ignoreIdx && norm(c[key]) === target);
+  };
+
   const update = (i: number, key: keyof Contact, value: string) => {
+    if (phase === "running" && (key === "phone" || key === "email") && isDuplicate(key, value, i)) {
+      toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
+      return;
+    }
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
   };
 
