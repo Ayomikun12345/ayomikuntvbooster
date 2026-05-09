@@ -171,6 +171,10 @@ export function VcfBuilder() {
       toast.error("Add at least one contact with a name and phone number.");
       return;
     }
+    if (valid.length > MAX_CONTACTS) {
+      toast.error(`Too many contacts. The limit is ${MAX_CONTACTS} per VCF.`);
+      return;
+    }
     const vcf = buildVcf(contacts);
     const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);
