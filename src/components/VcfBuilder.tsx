@@ -116,7 +116,7 @@ export function VcfBuilder() {
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
   const startTimer = () => {
-    const total = Math.max(0, Math.floor(minutes) * 60 + Math.floor(secs));
+    const total = Math.max(0, Math.floor(hours) * 3600 + Math.floor(minutes) * 60 + Math.floor(secs));
     if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
     if (!valid.length) return toast.error("Add at least one contact with a name and phone first.");
@@ -124,7 +124,7 @@ export function VcfBuilder() {
     endsAtRef.current = endsAt;
     setRemaining(total);
     setPhase("running");
-    persist({ phase: "running", endsAt, minutes, secs });
+    persist({ phase: "running", endsAt, hours, minutes, secs });
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
