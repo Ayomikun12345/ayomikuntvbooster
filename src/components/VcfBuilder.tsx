@@ -565,6 +565,46 @@ export function VcfBuilder() {
                 <RotateCcw className="size-4" /> Cancel
               </Button>
             )}
+
+            <div className="w-full max-w-xl mt-4 rounded-xl border border-border/60 bg-background/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+                  <Activity className="size-3.5 text-accent" /> Live activity
+                </div>
+                <div className="flex items-center gap-2 sm:ml-auto">
+                  <User className="size-3.5 text-muted-foreground" />
+                  <Input
+                    value={displayName}
+                    onChange={(e) => saveDisplayName(e.target.value.slice(0, 24))}
+                    className="h-8 text-xs bg-background/60 w-40"
+                    placeholder="Your display name"
+                  />
+                </div>
+              </div>
+              {activity.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No contacts added yet. As people add contacts, they'll show up here.
+                </p>
+              ) : (
+                <ul className="space-y-1.5 max-h-48 overflow-y-auto text-xs">
+                  {activity.map((a) => {
+                    const mine = a.sessionId === sessionId;
+                    const ago = Math.max(0, Math.floor((Date.now() - a.at) / 1000));
+                    const agoLabel = ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
+                    return (
+                      <li key={a.id} className="flex items-center gap-2">
+                        <span className={`inline-block size-1.5 rounded-full ${mine ? "bg-accent" : "bg-primary"}`} />
+                        <span className="font-medium text-foreground">
+                          {a.name}{mine ? " (you)" : ""}
+                        </span>
+                        <span className="text-muted-foreground">{a.label}</span>
+                        <span className="ml-auto text-muted-foreground/70 tabular-nums">{agoLabel}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
