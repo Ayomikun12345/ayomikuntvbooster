@@ -238,12 +238,23 @@ export function VcfBuilder() {
         {phase === "idle" && (
           <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="flex-1">
+              <Label>Hours</Label>
+              <Input
+                type="number"
+                min={0}
+                value={hours}
+                onChange={(e) => setHours(Math.max(0, Number(e.target.value) || 0))}
+                className="mt-2 bg-background/40"
+              />
+            </div>
+            <div className="flex-1">
               <Label>Minutes</Label>
               <Input
                 type="number"
                 min={0}
+                max={59}
                 value={minutes}
-                onChange={(e) => setMinutes(Math.max(0, Number(e.target.value) || 0))}
+                onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
                 className="mt-2 bg-background/40"
               />
             </div>
