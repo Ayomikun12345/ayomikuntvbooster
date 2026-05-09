@@ -327,6 +327,12 @@ export function VcfBuilder() {
     setPhase("running");
     setStarterId(sessionId);
     persist({ phase: "running", endsAt, hours, minutes, secs, starterId: sessionId });
+    loggedIndicesRef.current = new Set();
+    contacts.forEach((c, i) => {
+      if ((c.firstName || c.lastName) && c.phone) loggedIndicesRef.current.add(i);
+    });
+    try { localStorage.removeItem(ACTIVITY_KEY); } catch {}
+    setActivity([]);
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
