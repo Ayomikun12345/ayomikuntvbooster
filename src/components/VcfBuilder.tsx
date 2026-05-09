@@ -206,6 +206,10 @@ export function VcfBuilder() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
+    if (phase !== "done") {
+      toast.error("CSV import unlocks when the countdown finishes.");
+      return;
+    }
     try {
       const text = await file.text();
       const parsed = parseCsv(text);
