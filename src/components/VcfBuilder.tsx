@@ -47,16 +47,16 @@ export function VcfBuilder() {
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
-  type Saved = { minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null };
+  type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null };
   const loadSaved = (): Saved => {
-    if (typeof window === "undefined") return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+    if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      if (!raw) return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
       const s = JSON.parse(raw) as Saved;
-      return { minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null };
+      return { hours: s.hours ?? 0, minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null };
     } catch {
-      return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
     }
   };
   const initial = loadSaved();
@@ -67,6 +67,7 @@ export function VcfBuilder() {
   const initialPhase: "idle" | "running" | "done" =
     initial.phase === "running" && initialRemaining === 0 ? "done" : initial.phase;
 
+  const [hours, setHours] = useState(initial.hours);
   const [minutes, setMinutes] = useState(initial.minutes);
   const [secs, setSecs] = useState(initial.secs);
   const [remaining, setRemaining] = useState(initialRemaining);
@@ -102,6 +103,7 @@ export function VcfBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => { persist({ hours }); }, [hours]);
   useEffect(() => { persist({ minutes }); }, [minutes]);
   useEffect(() => { persist({ secs }); }, [secs]);
 
@@ -114,7 +116,7 @@ export function VcfBuilder() {
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
   const startTimer = () => {
-    const total = Math.max(0, Math.floor(minutes) * 60 + Math.floor(secs));
+    const total = Math.max(0, Math.floor(hours) * 3600 + Math.floor(minutes) * 60 + Math.floor(secs));
     if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
     if (!valid.length) return toast.error("Add at least one contact with a name and phone first.");
@@ -122,7 +124,7 @@ export function VcfBuilder() {
     endsAtRef.current = endsAt;
     setRemaining(total);
     setPhase("running");
-    persist({ phase: "running", endsAt, minutes, secs });
+    persist({ phase: "running", endsAt, hours, minutes, secs });
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
@@ -136,7 +138,7 @@ export function VcfBuilder() {
   };
 
   const fmt = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
@@ -236,12 +238,23 @@ export function VcfBuilder() {
         {phase === "idle" && (
           <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="flex-1">
+              <Label>Hours</Label>
+              <Input
+                type="number"
+                min={0}
+                value={hours}
+                onChange={(e) => setHours(Math.max(0, Number(e.target.value) || 0))}
+                className="mt-2 bg-background/40"
+              />
+            </div>
+            <div className="flex-1">
               <Label>Minutes</Label>
               <Input
                 type="number"
                 min={0}
+                max={59}
                 value={minutes}
-                onChange={(e) => setMinutes(Math.max(0, Number(e.target.value) || 0))}
+                onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
                 className="mt-2 bg-background/40"
               />
             </div>
@@ -272,7 +285,7 @@ export function VcfBuilder() {
               {fmt(remaining)}
             </div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Lock className="size-4" /> Download unlocks when timer hits 00:00
+              <Lock className="size-4" /> Download unlocks when timer hits 00:00:00
             </p>
             <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
               <RotateCcw className="size-4" /> Cancel
