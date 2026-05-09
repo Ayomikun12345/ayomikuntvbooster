@@ -110,17 +110,29 @@ export function VcfBuilder() {
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
-  type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null };
+  const SESSION_KEY = "ayomikun-vcf-session";
+  type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
   const loadSaved = (): Saved => {
-    if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+    if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      if (!raw) return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
       const s = JSON.parse(raw) as Saved;
-      return { hours: s.hours ?? 0, minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null };
+      return { hours: s.hours ?? 0, minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null, starterId: s.starterId ?? null };
     } catch {
-      return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     }
+  };
+  const getSessionId = (): string => {
+    if (typeof window === "undefined") return "";
+    try {
+      let id = sessionStorage.getItem(SESSION_KEY);
+      if (!id) {
+        id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem(SESSION_KEY, id);
+      }
+      return id;
+    } catch { return ""; }
   };
   const initial = loadSaved();
   const initialRemaining =
