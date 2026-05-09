@@ -472,9 +472,14 @@ export function VcfBuilder() {
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Lock className="size-4" /> Download unlocks when timer hits 00:00:00
             </p>
-            <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
-              <RotateCcw className="size-4" /> Cancel
-            </Button>
+            <p className="text-xs text-accent flex items-center gap-2">
+              <UserPlus className="size-3" /> Anyone can keep adding contacts while the countdown runs.
+            </p>
+            {isStarter && (
+              <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+                <RotateCcw className="size-4" /> Cancel
+              </Button>
+            )}
           </div>
         )}
 
@@ -487,9 +492,11 @@ export function VcfBuilder() {
             >
               <Download className="size-5" /> Download .VCF file
             </Button>
-            <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
-              <RotateCcw className="size-4" /> Restart timer
-            </Button>
+            {isStarter && (
+              <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+                <RotateCcw className="size-4" /> Restart timer
+              </Button>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="size-4 text-accent" />
               Works on iPhone, Android & desktop contacts.
