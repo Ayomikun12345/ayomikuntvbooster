@@ -67,6 +67,7 @@ export function VcfBuilder() {
   const initialPhase: "idle" | "running" | "done" =
     initial.phase === "running" && initialRemaining === 0 ? "done" : initial.phase;
 
+  const [hours, setHours] = useState(initial.hours);
   const [minutes, setMinutes] = useState(initial.minutes);
   const [secs, setSecs] = useState(initial.secs);
   const [remaining, setRemaining] = useState(initialRemaining);
