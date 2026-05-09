@@ -157,6 +157,56 @@ export function VcfBuilder() {
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const loadActivity = (): Activity[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(ACTIVITY_KEY);
+      return raw ? (JSON.parse(raw) as Activity[]) : [];
+    } catch { return []; }
+  };
+  const initialName = (() => {
+    if (typeof window === "undefined") return "Guest";
+    try {
+      const n = sessionStorage.getItem(NAME_KEY);
+      if (n) return n;
+      const fresh = `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
+      sessionStorage.setItem(NAME_KEY, fresh);
+      return fresh;
+    } catch { return "Guest"; }
+  })();
+  const [displayName, setDisplayName] = useState<string>(initialName);
+  const [activity, setActivity] = useState<Activity[]>(() => loadActivity());
+  const loggedIndicesRef = useRef<Set<number>>(new Set());
+
+  const saveDisplayName = (n: string) => {
+    setDisplayName(n);
+    try { sessionStorage.setItem(NAME_KEY, n); } catch {}
+  };
+
+  const logActivity = (label: string) => {
+    const entry: Activity = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sessionId,
+      name: displayName || "Guest",
+      label,
+      at: Date.now(),
+    };
+    try {
+      const next = [entry, ...loadActivity()].slice(0, ACTIVITY_MAX);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+      setActivity(next);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACTIVITY_KEY) setActivity(loadActivity());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const persist = (data: Partial<Saved>) => {
     try {
       const current = loadSaved();
