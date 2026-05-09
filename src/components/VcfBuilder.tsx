@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload, Activity, User } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
@@ -111,7 +111,11 @@ export function VcfBuilder() {
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
   const SESSION_KEY = "ayomikun-vcf-session";
+  const NAME_KEY = "ayomikun-vcf-name";
+  const ACTIVITY_KEY = "ayomikun-vcf-activity";
+  const ACTIVITY_MAX = 50;
   type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
+  type Activity = { id: string; sessionId: string; name: string; label: string; at: number };
   const loadSaved = (): Saved => {
     if (typeof window === "undefined") return { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
     try {
@@ -152,6 +156,56 @@ export function VcfBuilder() {
   const isStarter = !!starterId && starterId === sessionId;
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadActivity = (): Activity[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(ACTIVITY_KEY);
+      return raw ? (JSON.parse(raw) as Activity[]) : [];
+    } catch { return []; }
+  };
+  const initialName = (() => {
+    if (typeof window === "undefined") return "Guest";
+    try {
+      const n = sessionStorage.getItem(NAME_KEY);
+      if (n) return n;
+      const fresh = `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
+      sessionStorage.setItem(NAME_KEY, fresh);
+      return fresh;
+    } catch { return "Guest"; }
+  })();
+  const [displayName, setDisplayName] = useState<string>(initialName);
+  const [activity, setActivity] = useState<Activity[]>(() => loadActivity());
+  const loggedIndicesRef = useRef<Set<number>>(new Set());
+
+  const saveDisplayName = (n: string) => {
+    setDisplayName(n);
+    try { sessionStorage.setItem(NAME_KEY, n); } catch {}
+  };
+
+  const logActivity = (label: string) => {
+    const entry: Activity = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sessionId,
+      name: displayName || "Guest",
+      label,
+      at: Date.now(),
+    };
+    try {
+      const next = [entry, ...loadActivity()].slice(0, ACTIVITY_MAX);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+      setActivity(next);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACTIVITY_KEY) setActivity(loadActivity());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const persist = (data: Partial<Saved>) => {
     try {
@@ -200,7 +254,18 @@ export function VcfBuilder() {
       toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
       return;
     }
-    setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
+    setContacts((prev) => {
+      const next = prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
+      if (phase === "running" && !loggedIndicesRef.current.has(i)) {
+        const c = next[i];
+        if ((c.firstName || c.lastName) && c.phone) {
+          loggedIndicesRef.current.add(i);
+          const fn = `${c.firstName} ${c.lastName}`.trim() || "a contact";
+          logActivity(`added ${fn}`);
+        }
+      }
+      return next;
+    });
   };
 
   const add = () => {
@@ -262,6 +327,12 @@ export function VcfBuilder() {
     setPhase("running");
     setStarterId(sessionId);
     persist({ phase: "running", endsAt, hours, minutes, secs, starterId: sessionId });
+    loggedIndicesRef.current = new Set();
+    contacts.forEach((c, i) => {
+      if ((c.firstName || c.lastName) && c.phone) loggedIndicesRef.current.add(i);
+    });
+    try { localStorage.removeItem(ACTIVITY_KEY); } catch {}
+    setActivity([]);
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
   };
@@ -494,6 +565,46 @@ export function VcfBuilder() {
                 <RotateCcw className="size-4" /> Cancel
               </Button>
             )}
+
+            <div className="w-full max-w-xl mt-4 rounded-xl border border-border/60 bg-background/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+                  <Activity className="size-3.5 text-accent" /> Live activity
+                </div>
+                <div className="flex items-center gap-2 sm:ml-auto">
+                  <User className="size-3.5 text-muted-foreground" />
+                  <Input
+                    value={displayName}
+                    onChange={(e) => saveDisplayName(e.target.value.slice(0, 24))}
+                    className="h-8 text-xs bg-background/60 w-40"
+                    placeholder="Your display name"
+                  />
+                </div>
+              </div>
+              {activity.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No contacts added yet. As people add contacts, they'll show up here.
+                </p>
+              ) : (
+                <ul className="space-y-1.5 max-h-48 overflow-y-auto text-xs">
+                  {activity.map((a) => {
+                    const mine = a.sessionId === sessionId;
+                    const ago = Math.max(0, Math.floor((Date.now() - a.at) / 1000));
+                    const agoLabel = ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
+                    return (
+                      <li key={a.id} className="flex items-center gap-2">
+                        <span className={`inline-block size-1.5 rounded-full ${mine ? "bg-accent" : "bg-primary"}`} />
+                        <span className="font-medium text-foreground">
+                          {a.name}{mine ? " (you)" : ""}
+                        </span>
+                        <span className="text-muted-foreground">{a.label}</span>
+                        <span className="ml-auto text-muted-foreground/70 tabular-nums">{agoLabel}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
