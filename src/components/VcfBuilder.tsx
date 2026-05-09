@@ -45,6 +45,13 @@ function buildVcf(contacts: Contact[]) {
 export function VcfBuilder() {
   const [contacts, setContacts] = useState<Contact[]>([{ ...empty }]);
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
+  const [minutes, setMinutes] = useState(1);
+  const [secs, setSecs] = useState(0);
+  const [remaining, setRemaining] = useState(0);
+  const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
   const update = (i: number, key: keyof Contact, value: string) => {
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
@@ -53,6 +60,36 @@ export function VcfBuilder() {
   const add = () => setContacts((p) => [...p, { ...empty }]);
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
+
+  const startTimer = () => {
+    const total = Math.max(0, Math.floor(minutes) * 60 + Math.floor(secs));
+    if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
+    const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
+    if (!valid.length) return toast.error("Add at least one contact with a name and phone first.");
+    setRemaining(total);
+    setPhase("running");
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          setPhase("done");
+          toast.success("Time's up! Your VCF is ready to download.");
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+  };
+
+  const resetTimer = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setPhase("idle");
+    setRemaining(0);
+  };
+
+  const fmt = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
