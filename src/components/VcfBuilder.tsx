@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
@@ -22,6 +22,67 @@ function escapeVcf(v: string) {
 }
 
 const MAX_CONTACTS = 100;
+
+// Parse a single CSV line respecting quoted fields
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+const HEADER_MAP: Record<string, keyof Contact> = {
+  firstname: "firstName", "first name": "firstName", first: "firstName", given: "firstName",
+  lastname: "lastName", "last name": "lastName", last: "lastName", surname: "lastName", family: "lastName",
+  name: "firstName", fullname: "firstName", "full name": "firstName",
+  phone: "phone", mobile: "phone", tel: "phone", telephone: "phone", "phone number": "phone", number: "phone",
+  email: "email", mail: "email", "email address": "email",
+  org: "org", organization: "org", organisation: "org", company: "org",
+  note: "note", notes: "note", comment: "note", description: "note",
+};
+
+function parseCsv(text: string): Contact[] {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim().length);
+  if (!lines.length) return [];
+  const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+  const hasHeader = header.some((h) => HEADER_MAP[h]);
+  const startIdx = hasHeader ? 1 : 0;
+  const cols: (keyof Contact | null)[] = hasHeader
+    ? header.map((h) => HEADER_MAP[h] ?? null)
+    : ["firstName", "lastName", "phone", "email", "org", "note"];
+  const out: Contact[] = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const cells = parseCsvLine(lines[i]);
+    const c: Contact = { ...empty };
+    cells.forEach((val, idx) => {
+      const key = cols[idx];
+      if (!key) return;
+      // If a single "name" column maps to firstName, split into first/last
+      if (key === "firstName" && (header[idx] === "name" || header[idx] === "fullname" || header[idx] === "full name")) {
+        const parts = val.split(/\s+/);
+        c.firstName = parts[0] ?? "";
+        c.lastName = parts.slice(1).join(" ");
+      } else {
+        (c as any)[key] = val;
+      }
+    });
+    if (c.firstName || c.lastName || c.phone) out.push(c);
+  }
+  return out;
+}
 
 function buildVcf(contacts: Contact[]) {
   return contacts
@@ -128,6 +189,35 @@ export function VcfBuilder() {
   const remove = (i: number) =>
     setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const importCsv = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (!parsed.length) {
+        toast.error("No valid contacts found in that CSV.");
+        return;
+      }
+      setContacts((prev) => {
+        const base = prev.length === 1 && !prev[0].firstName && !prev[0].lastName && !prev[0].phone ? [] : prev;
+        const room = MAX_CONTACTS - base.length;
+        if (room <= 0) {
+          toast.error(`Contact limit reached (${MAX_CONTACTS} max).`);
+          return prev;
+        }
+        const toAdd = parsed.slice(0, room);
+        if (parsed.length > room) {
+          toast.warning(`Imported ${toAdd.length} contacts. ${parsed.length - room} skipped (over ${MAX_CONTACTS} limit).`);
+        } else {
+          toast.success(`Imported ${toAdd.length} contact${toAdd.length > 1 ? "s" : ""} from CSV.`);
+        }
+        return [...base, ...toAdd];
+      });
+    } catch {
+      toast.error("Could not read that CSV file.");
+    }
+  };
+
   const startTimer = () => {
     const total = Math.max(0, Math.floor(hours) * 3600 + Math.floor(minutes) * 60 + Math.floor(secs));
     if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
@@ -201,15 +291,36 @@ export function VcfBuilder() {
             placeholder="ayomikun-tv-contacts"
           />
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            onClick={add}
-            variant="secondary"
-            className="h-12 gap-2"
-            disabled={contacts.length >= MAX_CONTACTS}
-          >
-            <UserPlus className="size-4" /> Add contact
-          </Button>
+        <div className="flex flex-col items-stretch sm:items-end gap-1">
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importCsv(f);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="h-12 gap-2"
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
+              <Upload className="size-4" /> Import CSV
+            </Button>
+            <Button
+              onClick={add}
+              variant="secondary"
+              className="h-12 gap-2"
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
+              <UserPlus className="size-4" /> Add contact
+            </Button>
+          </div>
           <span
             className={`text-xs ${
               contacts.length >= MAX_CONTACTS
@@ -219,7 +330,7 @@ export function VcfBuilder() {
                 : "text-muted-foreground"
             }`}
           >
-            {contacts.length} / {MAX_CONTACTS} contacts
+            {contacts.length} / {MAX_CONTACTS} contacts · CSV headers: firstName, lastName, phone, email, org, note
           </span>
         </div>
       </div>
