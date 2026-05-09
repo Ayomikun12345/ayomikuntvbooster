@@ -147,6 +147,9 @@ export function VcfBuilder() {
   const [secs, setSecs] = useState(initial.secs);
   const [remaining, setRemaining] = useState(initialRemaining);
   const [phase, setPhase] = useState<"idle" | "running" | "done">(initialPhase);
+  const [sessionId] = useState<string>(() => getSessionId());
+  const [starterId, setStarterId] = useState<string | null>(initial.starterId);
+  const isStarter = !!starterId && starterId === sessionId;
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
