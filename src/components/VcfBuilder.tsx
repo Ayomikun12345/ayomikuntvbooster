@@ -497,11 +497,13 @@ export function VcfBuilder() {
           </div>
         )}
 
-        <div className="mt-4 pt-4 border-t border-border/50 flex justify-end">
-          <Button onClick={clearTimer} variant="outline" size="sm" className="gap-2">
-            <Trash2 className="size-4" /> Clear timer & relock
-          </Button>
-        </div>
+        {isStarter && phase !== "idle" && (
+          <div className="mt-4 pt-4 border-t border-border/50 flex justify-end">
+            <Button onClick={clearTimer} variant="outline" size="sm" className="gap-2">
+              <Trash2 className="size-4" /> Clear timer & relock
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
