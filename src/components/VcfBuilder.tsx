@@ -291,15 +291,36 @@ export function VcfBuilder() {
             placeholder="ayomikun-tv-contacts"
           />
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            onClick={add}
-            variant="secondary"
-            className="h-12 gap-2"
-            disabled={contacts.length >= MAX_CONTACTS}
-          >
-            <UserPlus className="size-4" /> Add contact
-          </Button>
+        <div className="flex flex-col items-stretch sm:items-end gap-1">
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importCsv(f);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="h-12 gap-2"
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
+              <Upload className="size-4" /> Import CSV
+            </Button>
+            <Button
+              onClick={add}
+              variant="secondary"
+              className="h-12 gap-2"
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
+              <UserPlus className="size-4" /> Add contact
+            </Button>
+          </div>
           <span
             className={`text-xs ${
               contacts.length >= MAX_CONTACTS
@@ -309,7 +330,7 @@ export function VcfBuilder() {
                 : "text-muted-foreground"
             }`}
           >
-            {contacts.length} / {MAX_CONTACTS} contacts
+            {contacts.length} / {MAX_CONTACTS} contacts · CSV headers: firstName, lastName, phone, email, org, note
           </span>
         </div>
       </div>
