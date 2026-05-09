@@ -45,13 +45,65 @@ function buildVcf(contacts: Contact[]) {
 export function VcfBuilder() {
   const [contacts, setContacts] = useState<Contact[]>([{ ...empty }]);
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
-  const [minutes, setMinutes] = useState(1);
-  const [secs, setSecs] = useState(0);
-  const [remaining, setRemaining] = useState(0);
-  const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
+
+  const STORAGE_KEY = "ayomikun-vcf-timer";
+  type Saved = { minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null };
+  const loadSaved = (): Saved => {
+    if (typeof window === "undefined") return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+      const s = JSON.parse(raw) as Saved;
+      return { minutes: s.minutes ?? 1, secs: s.secs ?? 0, phase: s.phase ?? "idle", endsAt: s.endsAt ?? null };
+    } catch {
+      return { minutes: 1, secs: 0, phase: "idle", endsAt: null };
+    }
+  };
+  const initial = loadSaved();
+  const initialRemaining =
+    initial.phase === "running" && initial.endsAt
+      ? Math.max(0, Math.ceil((initial.endsAt - Date.now()) / 1000))
+      : 0;
+  const initialPhase: "idle" | "running" | "done" =
+    initial.phase === "running" && initialRemaining === 0 ? "done" : initial.phase;
+
+  const [minutes, setMinutes] = useState(initial.minutes);
+  const [secs, setSecs] = useState(initial.secs);
+  const [remaining, setRemaining] = useState(initialRemaining);
+  const [phase, setPhase] = useState<"idle" | "running" | "done">(initialPhase);
+  const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+  const persist = (data: Partial<Saved>) => {
+    try {
+      const current = loadSaved();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...data }));
+    } catch {}
+  };
+
+  const tick = () => {
+    if (!endsAtRef.current) return;
+    const r = Math.max(0, Math.ceil((endsAtRef.current - Date.now()) / 1000));
+    setRemaining(r);
+    if (r <= 0) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setPhase("done");
+      persist({ phase: "done", endsAt: null });
+      toast.success("Time's up! Your VCF is ready to download.");
+    }
+  };
+
+  useEffect(() => {
+    if (phase === "running" && endsAtRef.current) {
+      intervalRef.current = setInterval(tick, 1000);
+      tick();
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { persist({ minutes }); }, [minutes]);
+  useEffect(() => { persist({ secs }); }, [secs]);
 
   const update = (i: number, key: keyof Contact, value: string) => {
     setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
@@ -66,26 +118,21 @@ export function VcfBuilder() {
     if (total <= 0) return toast.error("Set a countdown longer than 0 seconds.");
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
     if (!valid.length) return toast.error("Add at least one contact with a name and phone first.");
+    const endsAt = Date.now() + total * 1000;
+    endsAtRef.current = endsAt;
     setRemaining(total);
     setPhase("running");
+    persist({ phase: "running", endsAt, minutes, secs });
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          setPhase("done");
-          toast.success("Time's up! Your VCF is ready to download.");
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
+    intervalRef.current = setInterval(tick, 1000);
   };
 
   const resetTimer = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    endsAtRef.current = null;
     setPhase("idle");
     setRemaining(0);
+    persist({ phase: "idle", endsAt: null });
   };
 
   const fmt = (s: number) =>
