@@ -23,6 +23,67 @@ function escapeVcf(v: string) {
 
 const MAX_CONTACTS = 100;
 
+// Parse a single CSV line respecting quoted fields
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+const HEADER_MAP: Record<string, keyof Contact> = {
+  firstname: "firstName", "first name": "firstName", first: "firstName", given: "firstName",
+  lastname: "lastName", "last name": "lastName", last: "lastName", surname: "lastName", family: "lastName",
+  name: "firstName", fullname: "firstName", "full name": "firstName",
+  phone: "phone", mobile: "phone", tel: "phone", telephone: "phone", "phone number": "phone", number: "phone",
+  email: "email", mail: "email", "email address": "email",
+  org: "org", organization: "org", organisation: "org", company: "org",
+  note: "note", notes: "note", comment: "note", description: "note",
+};
+
+function parseCsv(text: string): Contact[] {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim().length);
+  if (!lines.length) return [];
+  const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+  const hasHeader = header.some((h) => HEADER_MAP[h]);
+  const startIdx = hasHeader ? 1 : 0;
+  const cols: (keyof Contact | null)[] = hasHeader
+    ? header.map((h) => HEADER_MAP[h] ?? null)
+    : ["firstName", "lastName", "phone", "email", "org", "note"];
+  const out: Contact[] = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const cells = parseCsvLine(lines[i]);
+    const c: Contact = { ...empty };
+    cells.forEach((val, idx) => {
+      const key = cols[idx];
+      if (!key) return;
+      // If a single "name" column maps to firstName, split into first/last
+      if (key === "firstName" && (header[idx] === "name" || header[idx] === "fullname" || header[idx] === "full name")) {
+        const parts = val.split(/\s+/);
+        c.firstName = parts[0] ?? "";
+        c.lastName = parts.slice(1).join(" ");
+      } else {
+        (c as any)[key] = val;
+      }
+    });
+    if (c.firstName || c.lastName || c.phone) out.push(c);
+  }
+  return out;
+}
+
 function buildVcf(contacts: Contact[]) {
   return contacts
     .filter((c) => c.firstName || c.lastName || c.phone)
