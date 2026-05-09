@@ -278,6 +278,10 @@ export function VcfBuilder() {
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
+    if (phase !== "done") {
+      toast.error("Download unlocks when the countdown finishes.");
+      return;
+    }
     const valid = contacts.filter((c) => (c.firstName || c.lastName) && c.phone);
     if (!valid.length) {
       toast.error("Add at least one contact with a name and phone number.");
