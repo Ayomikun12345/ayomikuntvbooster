@@ -106,7 +106,8 @@ function buildVcf(contacts: Contact[]) {
 }
 
 export function VcfBuilder() {
-  const [contacts, setContacts] = useState<Contact[]>([{ ...empty }]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [draft, setDraft] = useState<Contact>({ ...empty });
   const [fileName, setFileName] = useState("ayomikun-tv-contacts");
 
   const STORAGE_KEY = "ayomikun-vcf-timer";
