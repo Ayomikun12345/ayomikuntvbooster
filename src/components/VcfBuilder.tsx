@@ -139,7 +139,16 @@ export function VcfBuilder() {
       return id;
     } catch { return ""; }
   };
-  const initial = loadSaved();
+  let initial = loadSaved();
+  // Auto-reset on page refresh if a previous session already ended.
+  // This frees the app for a brand-new countdown session.
+  if (typeof window !== "undefined" && initial.phase === "done") {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVITY_KEY);
+    } catch {}
+    initial = { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
+  }
   const initialRemaining =
     initial.phase === "running" && initial.endsAt
       ? Math.max(0, Math.ceil((initial.endsAt - Date.now()) / 1000))
