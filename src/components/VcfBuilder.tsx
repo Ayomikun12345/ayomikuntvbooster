@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload, Activity, User } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
@@ -250,25 +250,22 @@ export function VcfBuilder() {
   };
 
   const update = (i: number, key: keyof Contact, value: string) => {
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
+      return;
+    }
     if (phase === "running" && (key === "phone" || key === "email") && isDuplicate(key, value, i)) {
       toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
       return;
     }
-    setContacts((prev) => {
-      const next = prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
-      if (phase === "running" && !loggedIndicesRef.current.has(i)) {
-        const c = next[i];
-        if ((c.firstName || c.lastName) && c.phone) {
-          loggedIndicesRef.current.add(i);
-          const fn = `${c.firstName} ${c.lastName}`.trim() || "a contact";
-          logActivity(`added ${fn}`);
-        }
-      }
-      return next;
-    });
+    setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
   };
 
   const add = () => {
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
+      return;
+    }
     setContacts((p) => {
       if (p.length >= MAX_CONTACTS) {
         toast.error(`Contact limit reached (${MAX_CONTACTS} max). Remove one to add another.`);
@@ -285,8 +282,8 @@ export function VcfBuilder() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
-    if (phase !== "done") {
-      toast.error("CSV import unlocks when the countdown finishes.");
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
       return;
     }
     try {
@@ -419,16 +416,16 @@ export function VcfBuilder() {
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
               className="h-12 gap-2"
-              disabled={contacts.length >= MAX_CONTACTS || phase !== "done"}
-              title={phase !== "done" ? "Unlocks when the countdown finishes" : undefined}
+              disabled={contacts.length >= MAX_CONTACTS || phase === "done"}
+              title={phase === "done" ? "Locked: countdown has ended" : undefined}
             >
-              {phase !== "done" ? <Lock className="size-4" /> : <Upload className="size-4" />} Import CSV
+              {phase === "done" ? <Lock className="size-4" /> : <Upload className="size-4" />} Import CSV
             </Button>
             <Button
               onClick={add}
               variant="secondary"
               className="h-12 gap-2"
-              disabled={contacts.length >= MAX_CONTACTS}
+              disabled={contacts.length >= MAX_CONTACTS || phase === "done"}
             >
               <UserPlus className="size-4" /> Add contact
             </Button>
@@ -565,46 +562,6 @@ export function VcfBuilder() {
                 <RotateCcw className="size-4" /> Cancel
               </Button>
             )}
-
-            <div className="w-full max-w-xl mt-4 rounded-xl border border-border/60 bg-background/40 p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-                  <Activity className="size-3.5 text-accent" /> Live activity
-                </div>
-                <div className="flex items-center gap-2 sm:ml-auto">
-                  <User className="size-3.5 text-muted-foreground" />
-                  <Input
-                    value={displayName}
-                    onChange={(e) => saveDisplayName(e.target.value.slice(0, 24))}
-                    className="h-8 text-xs bg-background/60 w-40"
-                    placeholder="Your display name"
-                  />
-                </div>
-              </div>
-              {activity.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No contacts added yet. As people add contacts, they'll show up here.
-                </p>
-              ) : (
-                <ul className="space-y-1.5 max-h-48 overflow-y-auto text-xs">
-                  {activity.map((a) => {
-                    const mine = a.sessionId === sessionId;
-                    const ago = Math.max(0, Math.floor((Date.now() - a.at) / 1000));
-                    const agoLabel = ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
-                    return (
-                      <li key={a.id} className="flex items-center gap-2">
-                        <span className={`inline-block size-1.5 rounded-full ${mine ? "bg-accent" : "bg-primary"}`} />
-                        <span className="font-medium text-foreground">
-                          {a.name}{mine ? " (you)" : ""}
-                        </span>
-                        <span className="text-muted-foreground">{a.label}</span>
-                        <span className="ml-auto text-muted-foreground/70 tabular-nums">{agoLabel}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
           </div>
         )}
 
