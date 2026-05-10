@@ -250,25 +250,22 @@ export function VcfBuilder() {
   };
 
   const update = (i: number, key: keyof Contact, value: string) => {
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
+      return;
+    }
     if (phase === "running" && (key === "phone" || key === "email") && isDuplicate(key, value, i)) {
       toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
       return;
     }
-    setContacts((prev) => {
-      const next = prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c));
-      if (phase === "running" && !loggedIndicesRef.current.has(i)) {
-        const c = next[i];
-        if ((c.firstName || c.lastName) && c.phone) {
-          loggedIndicesRef.current.add(i);
-          const fn = `${c.firstName} ${c.lastName}`.trim() || "a contact";
-          logActivity(`added ${fn}`);
-        }
-      }
-      return next;
-    });
+    setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
   };
 
   const add = () => {
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
+      return;
+    }
     setContacts((p) => {
       if (p.length >= MAX_CONTACTS) {
         toast.error(`Contact limit reached (${MAX_CONTACTS} max). Remove one to add another.`);
