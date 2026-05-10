@@ -474,53 +474,93 @@ export function VcfBuilder() {
       </div>
 
       <div className="space-y-6">
-        {contacts.map((c, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-border/60 bg-background/30 p-5 md:p-6 relative"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm uppercase tracking-widest text-muted-foreground">
-                Contact #{i + 1}
+        <div className="rounded-2xl border border-border/60 bg-background/30 p-5 md:p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm uppercase tracking-widest text-muted-foreground">
+              Add a contact
+            </span>
+            {phase === "done" && (
+              <span className="text-xs text-destructive flex items-center gap-1">
+                <Lock className="size-3" /> Locked
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => remove(i)}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
+            )}
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>First name</Label>
-                <Input value={c.firstName} onChange={(e) => update(i, "firstName", e.target.value)} className="mt-2 bg-background/40" placeholder="Ayomikun" />
-              </div>
-              <div>
-                <Label>Last name</Label>
-                <Input value={c.lastName} onChange={(e) => update(i, "lastName", e.target.value)} className="mt-2 bg-background/40" placeholder="TV" />
-              </div>
-              <div>
-                <Label>Phone</Label>
-                <Input value={c.phone} onChange={(e) => update(i, "phone", e.target.value)} className="mt-2 bg-background/40" placeholder="+234 800 000 0000" />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input type="email" value={c.email} onChange={(e) => update(i, "email", e.target.value)} className="mt-2 bg-background/40" placeholder="hello@example.com" />
-              </div>
-              <div>
-                <Label>Organization</Label>
-                <Input value={c.org} onChange={(e) => update(i, "org", e.target.value)} className="mt-2 bg-background/40" placeholder="Ayomikun TV Media" />
-              </div>
-              <div>
-                <Label>Note</Label>
-                <Textarea value={c.note} onChange={(e) => update(i, "note", e.target.value)} className="mt-2 bg-background/40 min-h-[42px]" placeholder="Booster member" />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>First name</Label>
+              <Input value={draft.firstName} onChange={(e) => updateDraft("firstName", e.target.value)} className="mt-2 bg-background/40" placeholder="Ayomikun" disabled={phase === "done"} />
+            </div>
+            <div>
+              <Label>Last name</Label>
+              <Input value={draft.lastName} onChange={(e) => updateDraft("lastName", e.target.value)} className="mt-2 bg-background/40" placeholder="TV" disabled={phase === "done"} />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                value={draft.phone}
+                onChange={(e) => updateDraft("phone", e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitDraft(); } }}
+                inputMode="tel"
+                className="mt-2 bg-background/40"
+                placeholder="+234 800 000 0000"
+                disabled={phase === "done"}
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={draft.email} onChange={(e) => updateDraft("email", e.target.value)} className="mt-2 bg-background/40" placeholder="hello@example.com" disabled={phase === "done"} />
+            </div>
+            <div>
+              <Label>Organization</Label>
+              <Input value={draft.org} onChange={(e) => updateDraft("org", e.target.value)} className="mt-2 bg-background/40" placeholder="Ayomikun TV Media" disabled={phase === "done"} />
+            </div>
+            <div>
+              <Label>Note</Label>
+              <Textarea value={draft.note} onChange={(e) => updateDraft("note", e.target.value)} className="mt-2 bg-background/40 min-h-[42px]" placeholder="Booster member" disabled={phase === "done"} />
             </div>
           </div>
-        ))}
+
+          <div className="mt-5 flex justify-end">
+            <Button
+              onClick={submitDraft}
+              disabled={phase === "done" || contacts.length >= MAX_CONTACTS}
+              className="h-11 gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+            >
+              <UserPlus className="size-4" /> Save contact
+            </Button>
+          </div>
+        </div>
+
+        {contacts.length > 0 && (
+          <div className="rounded-2xl border border-border/60 bg-background/20 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">
+                Saved contacts ({contacts.length})
+              </span>
+            </div>
+            <ul className="space-y-2 max-h-72 overflow-y-auto">
+              {contacts.map((c, i) => (
+                <li key={i} className="flex items-center gap-3 rounded-lg bg-background/40 px-3 py-2 text-sm">
+                  <span className="font-medium text-foreground truncate">
+                    {`${c.firstName} ${c.lastName}`.trim() || "Unnamed"}
+                  </span>
+                  <span className="text-muted-foreground tabular-nums truncate">{c.phone}</span>
+                  {c.email && <span className="text-muted-foreground/80 truncate hidden sm:inline">{c.email}</span>}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeAt(i)}
+                    disabled={phase === "done"}
+                    className="ml-auto text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="mt-8 rounded-2xl border border-border/60 bg-background/30 p-5 md:p-6">
