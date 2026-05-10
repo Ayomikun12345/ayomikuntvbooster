@@ -242,44 +242,80 @@ export function VcfBuilder() {
 
   const normPhone = (v: string) => v.replace(/[^\d+]/g, "");
   const normEmail = (v: string) => v.trim().toLowerCase();
-  const isDuplicate = (key: "phone" | "email", value: string, ignoreIdx = -1) => {
+  const isValidPhone = (v: string) => {
+    const n = normPhone(v);
+    if (!n) return false;
+    // optional leading +, then 7-15 digits (E.164-friendly)
+    return /^\+?\d{7,15}$/.test(n);
+  };
+  const isValidEmail = (v: string) => {
+    if (!v.trim()) return true; // email optional
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+  };
+  const isDuplicate = (key: "phone" | "email", value: string) => {
     if (!value.trim()) return false;
     const norm = key === "phone" ? normPhone : normEmail;
     const target = norm(value);
     if (!target) return false;
-    return contacts.some((c, idx) => idx !== ignoreIdx && norm(c[key]) === target);
+    return contacts.some((c) => norm(c[key]) === target);
   };
 
-  const update = (i: number, key: keyof Contact, value: string) => {
+  const updateDraft = (key: keyof Contact, value: string) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+  };
+
+  const submitDraft = () => {
     if (phase === "done") {
       toast.error("Contacts are locked. The countdown has ended.");
       return;
     }
-    if (phase === "running" && (key === "phone" || key === "email") && isDuplicate(key, value, i)) {
-      toast.error(`That ${key} is already on another contact. Duplicates are blocked while the timer runs.`);
+    if (contacts.length >= MAX_CONTACTS) {
+      toast.error(`Contact limit reached (${MAX_CONTACTS} max).`);
       return;
     }
-    setContacts((prev) => prev.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
-  };
-
-  const add = () => {
-    if (phase === "done") {
-      toast.error("Contacts are locked. The countdown has ended.");
+    const firstName = draft.firstName.trim();
+    const lastName = draft.lastName.trim();
+    if (!firstName && !lastName) {
+      toast.error("Enter a first or last name.");
       return;
     }
+    if (!isValidPhone(draft.phone)) {
+      toast.error("Enter a valid phone number (7–15 digits, optional +).");
+      return;
+    }
+    if (!isValidEmail(draft.email)) {
+      toast.error("Enter a valid email address or leave it blank.");
+      return;
+    }
+    if (isDuplicate("phone", draft.phone)) {
+      toast.error("That phone number is already saved.");
+      return;
+    }
+    if (draft.email.trim() && isDuplicate("email", draft.email)) {
+      toast.error("That email is already saved.");
+      return;
+    }
+    const clean: Contact = {
+      firstName,
+      lastName,
+      phone: draft.phone.trim(),
+      email: draft.email.trim(),
+      org: draft.org.trim(),
+      note: draft.note.trim(),
+    };
     setContacts((p) => {
-      if (p.length >= MAX_CONTACTS) {
-        toast.error(`Contact limit reached (${MAX_CONTACTS} max). Remove one to add another.`);
-        return p;
+      const next = [...p, clean];
+      if (next.length === MAX_CONTACTS) {
+        toast.warning(`You've hit the ${MAX_CONTACTS}-contact limit.`);
       }
-      if (p.length + 1 === MAX_CONTACTS) {
-        toast.warning(`Heads up: you've hit the ${MAX_CONTACTS}-contact limit.`);
-      }
-      return [...p, { ...empty }];
+      return next;
     });
+    setDraft({ ...empty });
+    toast.success(`Saved ${`${firstName} ${lastName}`.trim()}`);
   };
-  const remove = (i: number) =>
-    setContacts((p) => (p.length === 1 ? [{ ...empty }] : p.filter((_, idx) => idx !== i)));
+
+  const removeAt = (i: number) =>
+    setContacts((p) => p.filter((_, idx) => idx !== i));
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
