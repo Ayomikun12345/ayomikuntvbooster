@@ -282,8 +282,8 @@ export function VcfBuilder() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
-    if (phase !== "done") {
-      toast.error("CSV import unlocks when the countdown finishes.");
+    if (phase === "done") {
+      toast.error("Contacts are locked. The countdown has ended.");
       return;
     }
     try {
