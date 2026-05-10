@@ -140,9 +140,16 @@ export function VcfBuilder() {
     } catch { return ""; }
   };
   let initial = loadSaved();
-  // Auto-reset on page refresh if a previous session already ended.
-  // This frees the app for a brand-new countdown session.
-  if (typeof window !== "undefined" && initial.phase === "done") {
+  // Detect whether THIS browser tab already had a session id before this load.
+  // - Existing tab (refresh by the starter or an active participant) → keep state
+  //   so the starter can still download and contributors can keep adding.
+  // - Brand-new tab/visitor → reset a finished session so they can start fresh.
+  const hadPriorSession =
+    typeof window !== "undefined" &&
+    (() => {
+      try { return !!sessionStorage.getItem(SESSION_KEY); } catch { return false; }
+    })();
+  if (typeof window !== "undefined" && initial.phase === "done" && !hadPriorSession) {
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(ACTIVITY_KEY);
