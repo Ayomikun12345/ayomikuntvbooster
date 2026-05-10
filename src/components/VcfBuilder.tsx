@@ -458,14 +458,6 @@ export function VcfBuilder() {
             >
               {phase === "done" ? <Lock className="size-4" /> : <Upload className="size-4" />} Import CSV
             </Button>
-            <Button
-              onClick={add}
-              variant="secondary"
-              className="h-12 gap-2"
-              disabled={contacts.length >= MAX_CONTACTS || phase === "done"}
-            >
-              <UserPlus className="size-4" /> Add contact
-            </Button>
           </div>
           <span
             className={`text-xs ${
