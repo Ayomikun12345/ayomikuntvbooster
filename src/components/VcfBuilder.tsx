@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
@@ -140,20 +140,22 @@ export function VcfBuilder() {
     } catch { return ""; }
   };
   let initial = loadSaved();
-  // Detect whether THIS browser tab already had a session id before this load.
-  // - Existing tab (refresh by the starter or an active participant) → keep state
-  //   so the starter can still download and contributors can keep adding.
-  // - Brand-new tab/visitor → reset a finished session so they can start fresh.
+  // A visitor only sees an existing session when:
+  //   1. THIS browser tab already participated in it (sessionStorage key exists), OR
+  //   2. They opened a starter's invite link (?join=<starterId> in the URL).
+  // Every other visitor — including a brand-new tab on the same device —
+  // gets a fresh idle setup so they can create their own session.
   const hadPriorSession =
     typeof window !== "undefined" &&
     (() => {
       try { return !!sessionStorage.getItem(SESSION_KEY); } catch { return false; }
     })();
-  if (typeof window !== "undefined" && initial.phase === "done" && !hadPriorSession) {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(ACTIVITY_KEY);
-    } catch {}
+  const joinToken =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("join")
+      : null;
+  const joinMatchesSession = !!joinToken && !!initial.starterId && joinToken === initial.starterId;
+  if (typeof window !== "undefined" && !hadPriorSession && !joinMatchesSession) {
     initial = { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
   }
   const initialRemaining =
@@ -428,6 +430,17 @@ export function VcfBuilder() {
     toast.success("Timer cleared. Download is locked again.");
   };
 
+  const copySessionLink = async () => {
+    if (!isStarter || !starterId) return;
+    try {
+      const url = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(starterId)}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Session link copied. Share it to invite contributors.");
+    } catch {
+      toast.error("Couldn't copy the link. Please try again.");
+    }
+  };
+
   const fmt = (s: number) =>
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -662,9 +675,14 @@ export function VcfBuilder() {
               <UserPlus className="size-3" /> Anyone can keep adding contacts while the countdown runs.
             </p>
             {isStarter && (
-              <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
-                <RotateCcw className="size-4" /> Cancel
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={copySessionLink} variant="outline" size="sm" className="gap-2">
+                  <Link2 className="size-4" /> Copy session link
+                </Button>
+                <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+                  <RotateCcw className="size-4" /> Cancel
+                </Button>
+              </div>
             )}
           </div>
         )}
