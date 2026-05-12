@@ -440,6 +440,8 @@ export function VcfBuilder() {
       toast.error("Couldn't copy the link. Please try again.");
     }
   };
+
+  const fmt = (s: number) =>
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
