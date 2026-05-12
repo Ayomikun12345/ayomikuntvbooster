@@ -675,9 +675,14 @@ export function VcfBuilder() {
               <UserPlus className="size-3" /> Anyone can keep adding contacts while the countdown runs.
             </p>
             {isStarter && (
-              <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
-                <RotateCcw className="size-4" /> Cancel
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={copySessionLink} variant="outline" size="sm" className="gap-2">
+                  <Link2 className="size-4" /> Copy session link
+                </Button>
+                <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
+                  <RotateCcw className="size-4" /> Cancel
+                </Button>
+              </div>
             )}
           </div>
         )}
