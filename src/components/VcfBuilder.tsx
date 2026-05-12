@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -258,6 +259,121 @@ export function VcfBuilder() {
   useEffect(() => { persist({ minutes }); }, [minutes]);
   useEffect(() => { persist({ secs }); }, [secs]);
 
+  // ----- Cloud sync -----
+  // Skip applying our own outgoing writes when they echo back via realtime.
+  const skipNextRemoteRef = useRef(false);
+  const lastPushedRef = useRef<string>("");
+
+  const applyRemote = (row: {
+    contacts: Contact[] | null;
+    activity: Activity[] | null;
+    timer_hours: number | null;
+    timer_minutes: number | null;
+    timer_secs: number | null;
+    phase: "idle" | "running" | "done" | string | null;
+    ends_at: string | null;
+  }) => {
+    setContacts(Array.isArray(row.contacts) ? row.contacts : []);
+    setActivity(Array.isArray(row.activity) ? row.activity : []);
+    setHours(row.timer_hours ?? 0);
+    setMinutes(row.timer_minutes ?? 1);
+    setSecs(row.timer_secs ?? 0);
+    const newPhase = (row.phase as "idle" | "running" | "done") ?? "idle";
+    if (newPhase === "running" && row.ends_at) {
+      const ts = new Date(row.ends_at).getTime();
+      endsAtRef.current = ts;
+      const r = Math.max(0, Math.ceil((ts - Date.now()) / 1000));
+      setRemaining(r);
+      if (r > 0) {
+        setPhase("running");
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(tick, 1000);
+      } else {
+        setPhase("done");
+      }
+      persist({ phase: newPhase, endsAt: ts });
+    } else {
+      endsAtRef.current = null;
+      setPhase(newPhase);
+      setRemaining(0);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      persist({ phase: newPhase, endsAt: null });
+    }
+  };
+
+  // Subscribe to remote changes for the active session.
+  useEffect(() => {
+    if (!starterId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("vcf_sessions")
+        .select("*")
+        .eq("starter_id", starterId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      if (skipNextRemoteRef.current) { skipNextRemoteRef.current = false; return; }
+      applyRemote(data as never);
+    })();
+    const channel = supabase
+      .channel(`vcf-session-${starterId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vcf_sessions", filter: `starter_id=eq.${starterId}` },
+        (payload) => {
+          if (!payload.new) return;
+          if (skipNextRemoteRef.current) { skipNextRemoteRef.current = false; return; }
+          applyRemote(payload.new as never);
+        },
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [starterId]);
+
+  // Push local state to the cloud whenever the starter changes anything.
+  useEffect(() => {
+    if (!isStarter || !starterId) return;
+    const payload = {
+      starter_id: starterId,
+      starter_name: displayName,
+      contacts: contacts as unknown as never,
+      activity: activity as unknown as never,
+      timer_hours: hours,
+      timer_minutes: minutes,
+      timer_secs: secs,
+      phase,
+      ends_at: endsAtRef.current ? new Date(endsAtRef.current).toISOString() : null,
+    };
+    const fp = JSON.stringify(payload);
+    if (fp === lastPushedRef.current) return;
+    lastPushedRef.current = fp;
+    skipNextRemoteRef.current = true;
+    const t = setTimeout(() => {
+      supabase
+        .from("vcf_sessions")
+        .upsert(payload, { onConflict: "starter_id" })
+        .then(({ error }) => {
+          if (error) console.error("vcf_sessions upsert failed", error);
+        });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [isStarter, starterId, contacts, activity, hours, minutes, secs, phase, displayName]);
+
+  // Contributors (non-starter) push their contact additions remotely.
+  const pushContributorContacts = async (next: Contact[]) => {
+    if (!starterId || isStarter) return;
+    const { error } = await supabase
+      .from("vcf_sessions")
+      .update({ contacts: next as unknown as never })
+      .eq("starter_id", starterId);
+    if (error) console.error("contributor contact push failed", error);
+  };
+
+
   const normPhone = (v: string) => v.replace(/[^\d+]/g, "");
   const normEmail = (v: string) => v.trim().toLowerCase();
   const isValidPhone = (v: string) => {
@@ -326,6 +442,7 @@ export function VcfBuilder() {
       if (next.length === MAX_CONTACTS) {
         toast.warning(`You've hit the ${MAX_CONTACTS}-contact limit.`);
       }
+      void pushContributorContacts(next);
       return next;
     });
     setDraft({ ...empty });

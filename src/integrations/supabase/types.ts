@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      vcf_sessions: {
+        Row: {
+          activity: Json
+          contacts: Json
+          created_at: string
+          ends_at: string | null
+          phase: string
+          starter_id: string
+          starter_name: string | null
+          timer_hours: number
+          timer_minutes: number
+          timer_secs: number
+          updated_at: string
+        }
+        Insert: {
+          activity?: Json
+          contacts?: Json
+          created_at?: string
+          ends_at?: string | null
+          phase?: string
+          starter_id: string
+          starter_name?: string | null
+          timer_hours?: number
+          timer_minutes?: number
+          timer_secs?: number
+          updated_at?: string
+        }
+        Update: {
+          activity?: Json
+          contacts?: Json
+          created_at?: string
+          ends_at?: string | null
+          phase?: string
+          starter_id?: string
+          starter_name?: string | null
+          timer_hours?: number
+          timer_minutes?: number
+          timer_secs?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
