@@ -430,7 +430,16 @@ export function VcfBuilder() {
     toast.success("Timer cleared. Download is locked again.");
   };
 
-  const fmt = (s: number) =>
+  const copySessionLink = async () => {
+    if (!isStarter || !starterId) return;
+    try {
+      const url = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(starterId)}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Session link copied. Share it to invite contributors.");
+    } catch {
+      toast.error("Couldn't copy the link. Please try again.");
+    }
+  };
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const download = () => {
