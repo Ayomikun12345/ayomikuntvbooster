@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload } from "lucide-react";
+import { Download, UserPlus, Trash2, Sparkles, Timer, Play, RotateCcw, Lock, Upload, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Contact = {
