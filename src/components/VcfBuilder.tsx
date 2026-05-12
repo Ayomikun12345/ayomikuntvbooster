@@ -396,6 +396,25 @@ export function VcfBuilder() {
     persist({ phase: "idle", endsAt: null, starterId: null });
   };
 
+  const startNewSession = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    endsAtRef.current = null;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVITY_KEY);
+    } catch {}
+    setContacts([]);
+    setDraft({ ...empty });
+    setActivity([]);
+    setStarterId(null);
+    setPhase("idle");
+    setRemaining(0);
+    setHours(0);
+    setMinutes(1);
+    setSecs(0);
+    toast.success("Fresh session ready. Set your countdown to begin.");
+  };
+
   const clearTimer = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     endsAtRef.current = null;
