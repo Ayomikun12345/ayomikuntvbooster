@@ -396,6 +396,25 @@ export function VcfBuilder() {
     persist({ phase: "idle", endsAt: null, starterId: null });
   };
 
+  const startNewSession = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    endsAtRef.current = null;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVITY_KEY);
+    } catch {}
+    setContacts([]);
+    setDraft({ ...empty });
+    setActivity([]);
+    setStarterId(null);
+    setPhase("idle");
+    setRemaining(0);
+    setHours(0);
+    setMinutes(1);
+    setSecs(0);
+    toast.success("Fresh session ready. Set your countdown to begin.");
+  };
+
   const clearTimer = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     endsAtRef.current = null;
@@ -659,9 +678,13 @@ export function VcfBuilder() {
             >
               <Download className="size-5" /> Download .VCF file
             </Button>
-            {isStarter && (
+            {isStarter ? (
               <Button onClick={resetTimer} variant="ghost" size="sm" className="gap-2">
                 <RotateCcw className="size-4" /> Restart timer
+              </Button>
+            ) : (
+              <Button onClick={startNewSession} variant="outline" size="sm" className="gap-2">
+                <Sparkles className="size-4" /> Start new session
               </Button>
             )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
