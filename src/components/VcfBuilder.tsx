@@ -140,20 +140,22 @@ export function VcfBuilder() {
     } catch { return ""; }
   };
   let initial = loadSaved();
-  // Detect whether THIS browser tab already had a session id before this load.
-  // - Existing tab (refresh by the starter or an active participant) → keep state
-  //   so the starter can still download and contributors can keep adding.
-  // - Brand-new tab/visitor → reset a finished session so they can start fresh.
+  // A visitor only sees an existing session when:
+  //   1. THIS browser tab already participated in it (sessionStorage key exists), OR
+  //   2. They opened a starter's invite link (?join=<starterId> in the URL).
+  // Every other visitor — including a brand-new tab on the same device —
+  // gets a fresh idle setup so they can create their own session.
   const hadPriorSession =
     typeof window !== "undefined" &&
     (() => {
       try { return !!sessionStorage.getItem(SESSION_KEY); } catch { return false; }
     })();
-  if (typeof window !== "undefined" && initial.phase === "done" && !hadPriorSession) {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(ACTIVITY_KEY);
-    } catch {}
+  const joinToken =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("join")
+      : null;
+  const joinMatchesSession = !!joinToken && !!initial.starterId && joinToken === initial.starterId;
+  if (typeof window !== "undefined" && !hadPriorSession && !joinMatchesSession) {
     initial = { hours: 0, minutes: 1, secs: 0, phase: "idle", endsAt: null, starterId: null };
   }
   const initialRemaining =
