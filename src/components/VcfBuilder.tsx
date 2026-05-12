@@ -442,6 +442,7 @@ export function VcfBuilder() {
       if (next.length === MAX_CONTACTS) {
         toast.warning(`You've hit the ${MAX_CONTACTS}-contact limit.`);
       }
+      void pushContributorContacts(next);
       return next;
     });
     setDraft({ ...empty });
