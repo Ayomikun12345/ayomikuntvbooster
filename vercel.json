@@ -1,8 +1,12 @@
 {
-  "builds": [
-    { "src": "dist/server/index.js", "use": "@vercel/node" }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
+  "functions": {
+    "dist/server/index.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "routes": [
-    { "src": "/(.*)", "dest": "dist/server/index.js" }
+    { "src": "/(.*)", "dest": "/dist/server/index.js" }
   ]
 }
