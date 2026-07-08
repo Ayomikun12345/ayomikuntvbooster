@@ -393,24 +393,36 @@ export function VcfBuilder() {
     skipNextRemoteRef.current = true;
     const t = setTimeout(() => {
       supabase
-        .from("vcf_sessions")
-        .upsert(payload, { onConflict: "starter_id" })
+        .rpc("upsert_vcf_session", {
+          _starter_id: starterId,
+          _session_secret: sessionSecret,
+          _starter_name: displayName,
+          _contacts: contacts as unknown as never,
+          _activity: activity as unknown as never,
+          _timer_hours: hours,
+          _timer_minutes: minutes,
+          _timer_secs: secs,
+          _phase: phase,
+          _ends_at: endsAtRef.current ? new Date(endsAtRef.current).toISOString() : null,
+        })
         .then(({ error }) => {
           if (error) console.error("vcf_sessions upsert failed", error);
         });
     }, 250);
     return () => clearTimeout(t);
-  }, [isStarter, starterId, contacts, activity, hours, minutes, secs, phase, displayName]);
+  }, [isStarter, starterId, sessionSecret, contacts, activity, hours, minutes, secs, phase, displayName]);
 
-  // Contributors (non-starter) push their contact additions remotely.
-  const pushContributorContacts = async (next: Contact[]) => {
+  // Contributors (non-starter) append a single contact via a controlled RPC.
+  const pushContributorContact = async (contact: Contact) => {
     if (!starterId || isStarter) return;
-    const { error } = await supabase
-      .from("vcf_sessions")
-      .update({ contacts: next as unknown as never })
-      .eq("starter_id", starterId);
+    const { error } = await supabase.rpc("append_vcf_contact", {
+      _starter_id: starterId,
+      _contact: contact as unknown as never,
+    });
     if (error) console.error("contributor contact push failed", error);
   };
+
+
 
 
   const normPhone = (v: string) => v.replace(/[^\d+]/g, "");
