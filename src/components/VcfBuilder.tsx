@@ -115,7 +115,20 @@ export function VcfBuilder() {
   const SESSION_KEY = "ayomikun-vcf-session";
   const NAME_KEY = "ayomikun-vcf-name";
   const ACTIVITY_KEY = "ayomikun-vcf-activity";
+  const SECRET_KEY = "ayomikun-vcf-secret";
   const ACTIVITY_MAX = 50;
+  const getSessionSecret = (): string => {
+    if (typeof window === "undefined") return "";
+    try {
+      let s = sessionStorage.getItem(SECRET_KEY);
+      if (!s) {
+        s = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem(SECRET_KEY, s);
+      }
+      return s;
+    } catch { return ""; }
+  };
+
   type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
   type Activity = { id: string; sessionId: string; name: string; label: string; at: number };
   const loadSaved = (): Saved => {
