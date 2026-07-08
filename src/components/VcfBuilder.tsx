@@ -403,7 +403,7 @@ export function VcfBuilder() {
           _timer_minutes: minutes,
           _timer_secs: secs,
           _phase: phase,
-          _ends_at: endsAtRef.current ? new Date(endsAtRef.current).toISOString() : null,
+          _ends_at: (endsAtRef.current ? new Date(endsAtRef.current).toISOString() : null) as unknown as string,
         })
         .then(({ error }) => {
           if (error) console.error("vcf_sessions upsert failed", error);
