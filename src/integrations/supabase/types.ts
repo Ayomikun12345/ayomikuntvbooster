@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           ends_at: string | null
           phase: string
+          session_secret: string | null
           starter_id: string
           starter_name: string | null
           timer_hours: number
@@ -34,6 +35,7 @@ export type Database = {
           created_at?: string
           ends_at?: string | null
           phase?: string
+          session_secret?: string | null
           starter_id: string
           starter_name?: string | null
           timer_hours?: number
@@ -47,6 +49,7 @@ export type Database = {
           created_at?: string
           ends_at?: string | null
           phase?: string
+          session_secret?: string | null
           starter_id?: string
           starter_name?: string | null
           timer_hours?: number
@@ -61,7 +64,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      append_vcf_contact: {
+        Args: { _contact: Json; _starter_id: string }
+        Returns: undefined
+      }
+      upsert_vcf_session: {
+        Args: {
+          _activity: Json
+          _contacts: Json
+          _ends_at: string
+          _phase: string
+          _session_secret: string
+          _starter_id: string
+          _starter_name: string
+          _timer_hours: number
+          _timer_minutes: number
+          _timer_secs: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

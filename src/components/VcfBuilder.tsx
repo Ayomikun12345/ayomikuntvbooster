@@ -115,7 +115,20 @@ export function VcfBuilder() {
   const SESSION_KEY = "ayomikun-vcf-session";
   const NAME_KEY = "ayomikun-vcf-name";
   const ACTIVITY_KEY = "ayomikun-vcf-activity";
+  const SECRET_KEY = "ayomikun-vcf-secret";
   const ACTIVITY_MAX = 50;
+  const getSessionSecret = (): string => {
+    if (typeof window === "undefined") return "";
+    try {
+      let s = sessionStorage.getItem(SECRET_KEY);
+      if (!s) {
+        s = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem(SECRET_KEY, s);
+      }
+      return s;
+    } catch { return ""; }
+  };
+
   type Saved = { hours: number; minutes: number; secs: number; phase: "idle" | "running" | "done"; endsAt: number | null; starterId: string | null };
   type Activity = { id: string; sessionId: string; name: string; label: string; at: number };
   const loadSaved = (): Saved => {
@@ -172,10 +185,12 @@ export function VcfBuilder() {
   const [remaining, setRemaining] = useState(initialRemaining);
   const [phase, setPhase] = useState<"idle" | "running" | "done">(initialPhase);
   const [sessionId] = useState<string>(() => getSessionId());
+  const [sessionSecret] = useState<string>(() => getSessionSecret());
   const [starterId, setStarterId] = useState<string | null>(initial.starterId);
   const isStarter = !!starterId && starterId === sessionId;
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   const loadActivity = (): Activity[] => {
     if (typeof window === "undefined") return [];
@@ -378,24 +393,36 @@ export function VcfBuilder() {
     skipNextRemoteRef.current = true;
     const t = setTimeout(() => {
       supabase
-        .from("vcf_sessions")
-        .upsert(payload, { onConflict: "starter_id" })
+        .rpc("upsert_vcf_session", {
+          _starter_id: starterId,
+          _session_secret: sessionSecret,
+          _starter_name: displayName,
+          _contacts: contacts as unknown as never,
+          _activity: activity as unknown as never,
+          _timer_hours: hours,
+          _timer_minutes: minutes,
+          _timer_secs: secs,
+          _phase: phase,
+          _ends_at: (endsAtRef.current ? new Date(endsAtRef.current).toISOString() : null) as unknown as string,
+        })
         .then(({ error }) => {
           if (error) console.error("vcf_sessions upsert failed", error);
         });
     }, 250);
     return () => clearTimeout(t);
-  }, [isStarter, starterId, contacts, activity, hours, minutes, secs, phase, displayName]);
+  }, [isStarter, starterId, sessionSecret, contacts, activity, hours, minutes, secs, phase, displayName]);
 
-  // Contributors (non-starter) push their contact additions remotely.
-  const pushContributorContacts = async (next: Contact[]) => {
+  // Contributors (non-starter) append a single contact via a controlled RPC.
+  const pushContributorContact = async (contact: Contact) => {
     if (!starterId || isStarter) return;
-    const { error } = await supabase
-      .from("vcf_sessions")
-      .update({ contacts: next as unknown as never })
-      .eq("starter_id", starterId);
+    const { error } = await supabase.rpc("append_vcf_contact", {
+      _starter_id: starterId,
+      _contact: contact as unknown as never,
+    });
     if (error) console.error("contributor contact push failed", error);
   };
+
+
 
 
   const normPhone = (v: string) => v.replace(/[^\d+]/g, "");
@@ -466,7 +493,7 @@ export function VcfBuilder() {
       if (next.length === MAX_CONTACTS) {
         toast.warning(`You've hit the ${MAX_CONTACTS}-contact limit.`);
       }
-      void pushContributorContacts(next);
+      void pushContributorContact(clean);
       return next;
     });
     setDraft({ ...empty });
