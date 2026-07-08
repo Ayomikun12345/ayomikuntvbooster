@@ -301,8 +301,32 @@ export function VcfBuilder() {
     }
   };
 
+  // Auto-join: if this visitor has no active session locally, look up the
+  // most recent running session in the cloud and join it as a contributor.
+  useEffect(() => {
+    if (starterId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("vcf_sessions")
+        .select("*")
+        .eq("phase", "running")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (cancelled || !data || !data.length) return;
+      const row = data[0] as { starter_id: string; ends_at: string | null };
+      if (!row.ends_at || new Date(row.ends_at).getTime() <= Date.now()) return;
+      setStarterId(row.starter_id);
+      persist({ starterId: row.starter_id });
+      applyRemote(row as never);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Subscribe to remote changes for the active session.
   useEffect(() => {
+
     if (!starterId) return;
     let cancelled = false;
     (async () => {
