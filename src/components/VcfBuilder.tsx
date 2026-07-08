@@ -185,10 +185,12 @@ export function VcfBuilder() {
   const [remaining, setRemaining] = useState(initialRemaining);
   const [phase, setPhase] = useState<"idle" | "running" | "done">(initialPhase);
   const [sessionId] = useState<string>(() => getSessionId());
+  const [sessionSecret] = useState<string>(() => getSessionSecret());
   const [starterId, setStarterId] = useState<string | null>(initial.starterId);
   const isStarter = !!starterId && starterId === sessionId;
   const endsAtRef = useRef<number | null>(initial.endsAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   const loadActivity = (): Activity[] => {
     if (typeof window === "undefined") return [];
