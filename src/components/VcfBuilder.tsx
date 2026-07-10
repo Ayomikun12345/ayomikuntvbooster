@@ -322,6 +322,25 @@ export function VcfBuilder() {
     if (starterId) return;
     let cancelled = false;
     (async () => {
+      // Prefer explicit ?join=<starterId> from the invite link — this lets
+      // participants reopen a session (even after the countdown ended) so
+      // they can still download the finished VCF.
+      const join =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("join")
+          : null;
+      if (join) {
+        const { data } = await supabase
+          .from("vcf_sessions")
+          .select("*")
+          .eq("starter_id", join)
+          .maybeSingle();
+        if (cancelled || !data) return;
+        setStarterId(data.starter_id);
+        persist({ starterId: data.starter_id });
+        applyRemote(data as never);
+        return;
+      }
       const { data } = await supabase
         .from("vcf_sessions")
         .select("*")
@@ -338,6 +357,7 @@ export function VcfBuilder() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Subscribe to remote changes for the active session.
   useEffect(() => {
