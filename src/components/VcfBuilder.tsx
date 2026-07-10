@@ -768,6 +768,53 @@ export function VcfBuilder() {
           </div>
         </div>
 
+        {contacts.length > 0 && isStarter && (
+          <div className="rounded-2xl border border-border/60 bg-background/20 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="size-4 text-accent" />
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">
+                Bulk prefix / suffix
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Add a tag before or after every saved contact's name — great for grouping (e.g. "ATV " prefix).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Prefix (before first name)</Label>
+                <Input
+                  value={bulkPrefix}
+                  onChange={(e) => setBulkPrefix(e.target.value)}
+                  className="mt-2 bg-background/40"
+                  placeholder="ATV "
+                />
+              </div>
+              <div>
+                <Label>Suffix (after last name)</Label>
+                <Input
+                  value={bulkSuffix}
+                  onChange={(e) => setBulkSuffix(e.target.value)}
+                  className="mt-2 bg-background/40"
+                  placeholder=" - Booster"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 justify-end">
+              <Button onClick={removeBulkAffixes} variant="ghost" size="sm">
+                Remove from all
+              </Button>
+              <Button
+                onClick={applyBulkAffixes}
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                disabled={!bulkPrefix && !bulkSuffix}
+              >
+                <Sparkles className="size-4" /> Apply to all {contacts.length}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {contacts.length > 0 && (
           <div className="rounded-2xl border border-border/60 bg-background/20 p-5">
             <div className="flex items-center justify-between mb-3">
