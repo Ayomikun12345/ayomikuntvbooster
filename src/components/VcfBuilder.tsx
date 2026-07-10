@@ -523,6 +523,44 @@ export function VcfBuilder() {
   const removeAt = (i: number) =>
     setContacts((p) => p.filter((_, idx) => idx !== i));
 
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkSuffix, setBulkSuffix] = useState("");
+  const applyBulkAffixes = () => {
+    if (!isStarter) return;
+    if (phase === "done") { toast.error("Contacts are locked. The countdown has ended."); return; }
+    const p = bulkPrefix;
+    const s = bulkSuffix;
+    if (!p && !s) return;
+    setContacts((prev) =>
+      prev.map((c) => {
+        const first = c.firstName ? `${p}${c.firstName}` : c.firstName;
+        const last = c.lastName ? `${c.lastName}${s}` : (s && !c.firstName ? "" : c.lastName);
+        // If no last name, append suffix to first name so it still shows up.
+        const firstWithSuffix = !c.lastName && s ? `${first}${s}` : first;
+        return { ...c, firstName: firstWithSuffix, lastName: last };
+      }),
+    );
+    toast.success(`Applied to ${contacts.length} contact${contacts.length > 1 ? "s" : ""}.`);
+  };
+  const removeBulkAffixes = () => {
+    if (!isStarter) return;
+    if (phase === "done") { toast.error("Contacts are locked. The countdown has ended."); return; }
+    const p = bulkPrefix;
+    const s = bulkSuffix;
+    if (!p && !s) return;
+    setContacts((prev) =>
+      prev.map((c) => {
+        let first = c.firstName;
+        let last = c.lastName;
+        if (p && first.startsWith(p)) first = first.slice(p.length);
+        if (s && last.endsWith(s)) last = last.slice(0, -s.length);
+        else if (s && !last && first.endsWith(s)) first = first.slice(0, -s.length);
+        return { ...c, firstName: first, lastName: last };
+      }),
+    );
+    toast.success("Removed prefix/suffix from all contacts.");
+  };
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
     if (phase === "done") {
