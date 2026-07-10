@@ -523,6 +523,44 @@ export function VcfBuilder() {
   const removeAt = (i: number) =>
     setContacts((p) => p.filter((_, idx) => idx !== i));
 
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkSuffix, setBulkSuffix] = useState("");
+  const applyBulkAffixes = () => {
+    if (!isStarter) return;
+    if (phase === "done") { toast.error("Contacts are locked. The countdown has ended."); return; }
+    const p = bulkPrefix;
+    const s = bulkSuffix;
+    if (!p && !s) return;
+    setContacts((prev) =>
+      prev.map((c) => {
+        const first = c.firstName ? `${p}${c.firstName}` : c.firstName;
+        const last = c.lastName ? `${c.lastName}${s}` : (s && !c.firstName ? "" : c.lastName);
+        // If no last name, append suffix to first name so it still shows up.
+        const firstWithSuffix = !c.lastName && s ? `${first}${s}` : first;
+        return { ...c, firstName: firstWithSuffix, lastName: last };
+      }),
+    );
+    toast.success(`Applied to ${contacts.length} contact${contacts.length > 1 ? "s" : ""}.`);
+  };
+  const removeBulkAffixes = () => {
+    if (!isStarter) return;
+    if (phase === "done") { toast.error("Contacts are locked. The countdown has ended."); return; }
+    const p = bulkPrefix;
+    const s = bulkSuffix;
+    if (!p && !s) return;
+    setContacts((prev) =>
+      prev.map((c) => {
+        let first = c.firstName;
+        let last = c.lastName;
+        if (p && first.startsWith(p)) first = first.slice(p.length);
+        if (s && last.endsWith(s)) last = last.slice(0, -s.length);
+        else if (s && !last && first.endsWith(s)) first = first.slice(0, -s.length);
+        return { ...c, firstName: first, lastName: last };
+      }),
+    );
+    toast.success("Removed prefix/suffix from all contacts.");
+  };
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importCsv = async (file: File) => {
     if (phase === "done") {
@@ -767,6 +805,53 @@ export function VcfBuilder() {
             </Button>
           </div>
         </div>
+
+        {contacts.length > 0 && isStarter && (
+          <div className="rounded-2xl border border-border/60 bg-background/20 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="size-4 text-accent" />
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">
+                Bulk prefix / suffix
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Add a tag before or after every saved contact's name — great for grouping (e.g. "ATV " prefix).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Prefix (before first name)</Label>
+                <Input
+                  value={bulkPrefix}
+                  onChange={(e) => setBulkPrefix(e.target.value)}
+                  className="mt-2 bg-background/40"
+                  placeholder="ATV "
+                />
+              </div>
+              <div>
+                <Label>Suffix (after last name)</Label>
+                <Input
+                  value={bulkSuffix}
+                  onChange={(e) => setBulkSuffix(e.target.value)}
+                  className="mt-2 bg-background/40"
+                  placeholder=" - Booster"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 justify-end">
+              <Button onClick={removeBulkAffixes} variant="ghost" size="sm">
+                Remove from all
+              </Button>
+              <Button
+                onClick={applyBulkAffixes}
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                disabled={!bulkPrefix && !bulkSuffix}
+              >
+                <Sparkles className="size-4" /> Apply to all {contacts.length}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {contacts.length > 0 && (
           <div className="rounded-2xl border border-border/60 bg-background/20 p-5">
