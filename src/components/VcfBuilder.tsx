@@ -667,7 +667,7 @@ export function VcfBuilder() {
       toast.error(`Too many contacts. The limit is ${MAX_CONTACTS} per VCF.`);
       return;
     }
-    const vcf = buildVcf(contacts);
+    const vcf = buildVcf(contacts, bulkPrefix, bulkSuffix);
     const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
