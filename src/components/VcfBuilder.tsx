@@ -278,10 +278,14 @@ export function VcfBuilder() {
   useEffect(() => { persist({ minutes }); }, [minutes]);
   useEffect(() => { persist({ secs }); }, [secs]);
 
-  // ----- Cloud sync -----
   // Skip applying our own outgoing writes when they echo back via realtime.
   const skipNextRemoteRef = useRef(false);
   const lastPushedRef = useRef<string>("");
+  // Block pushes until we've hydrated the cloud row at least once — otherwise
+  // a fresh mount with empty local state would immediately overwrite the
+  // cloud contacts before the initial fetch completes.
+  const hydratedRef = useRef(false);
+
 
   const applyRemote = (row: {
     contacts: Contact[] | null;
