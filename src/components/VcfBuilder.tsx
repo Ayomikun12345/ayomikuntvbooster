@@ -85,15 +85,19 @@ function parseCsv(text: string): Contact[] {
   return out;
 }
 
-function buildVcf(contacts: Contact[]) {
+function buildVcf(contacts: Contact[], prefix = "", suffix = "") {
   return contacts
     .filter((c) => c.firstName || c.lastName || c.phone)
     .map((c) => {
-      const fn = `${c.firstName} ${c.lastName}`.trim();
+      const first = c.firstName ? `${prefix}${c.firstName}` : c.firstName;
+      const last = c.lastName ? `${c.lastName}${suffix}` : c.lastName;
+      // If suffix set but no last name, append it to the first name so it still shows.
+      const firstOut = !c.lastName && suffix ? `${first}${suffix}` : first;
+      const fn = `${firstOut} ${last}`.trim();
       const lines = [
         "BEGIN:VCARD",
         "VERSION:3.0",
-        `N:${escapeVcf(c.lastName)};${escapeVcf(c.firstName)};;;`,
+        `N:${escapeVcf(last)};${escapeVcf(firstOut)};;;`,
         `FN:${escapeVcf(fn)}`,
       ];
       if (c.phone) lines.push(`TEL;TYPE=CELL:${escapeVcf(c.phone)}`);
