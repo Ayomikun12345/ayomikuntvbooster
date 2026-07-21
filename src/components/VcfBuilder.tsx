@@ -372,15 +372,22 @@ export function VcfBuilder() {
 
     if (!starterId) return;
     let cancelled = false;
+    hydratedRef.current = false;
     (async () => {
       const { data } = await supabase
         .from("vcf_sessions")
         .select("*")
         .eq("starter_id", starterId)
         .maybeSingle();
-      if (cancelled || !data) return;
-      if (skipNextRemoteRef.current) { skipNextRemoteRef.current = false; return; }
-      applyRemote(data as never);
+      if (cancelled) return;
+      if (data) {
+        if (skipNextRemoteRef.current) { skipNextRemoteRef.current = false; }
+        else applyRemote(data as never);
+      }
+      // Mark hydrated after the first fetch so the push effect can safely
+      // send local changes without clobbering the cloud row with an empty
+      // initial state on refresh.
+      hydratedRef.current = true;
     })();
     const channel = supabase
       .channel(`vcf-session-${starterId}`)
@@ -404,6 +411,8 @@ export function VcfBuilder() {
   // Push local state to the cloud whenever the starter changes anything.
   useEffect(() => {
     if (!isStarter || !starterId) return;
+    if (!hydratedRef.current) return;
+
     const payload = {
       starter_id: starterId,
       starter_name: displayName,
